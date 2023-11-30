@@ -1,26 +1,39 @@
-import { ethers } from "hardhat";
+import hre, { ethers } from "hardhat";
+import { TradeLink__factory } from "../typechain-types";
+import addresses from "../utils/addressUtils";
 
-async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+// npx hardhat run scripts/deploy.ts --network bkc_test
 
-  const lockedAmount = ethers.parseEther("0.001");
+const main = async () => {
+  const [owner] = await ethers.getSigners();
 
-  const lock = await ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  const deployTradeLink = [
+    {
+      chainName: "sepolia",
+      routerAddress: "0xd0daae2231e9cb96b94c8512223533293c3693bf",
+      linkTokenAddress: "0x779877A7B0D9E8603169DdbD7836e478b4624789",
+    },
+  ];
 
-  await lock.waitForDeployment();
+  const TradeLink = (await ethers.getContractFactory(
+    "TradeLink",
+    owner
+  )) as TradeLink__factory;
 
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
-}
+  for (let i = 0; i < deployTradeLink.length; i++) {
+    const tk = await TradeLink.deploy(
+      deployTradeLink[i].routerAddress,
+      deployTradeLink[i].linkTokenAddress
+    );
+    await tk.waitForDeployment();
+    const tkAddr = await tk.getAddress();
+    console.log(`Deployed ${deployTradeLink[i].chainName} at ${tkAddr}`);
+    await addresses.saveAddresses(hre.network.name, {
+      [deployTradeLink[i].chainName]: tkAddr,
+    });
+  }
+};
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
