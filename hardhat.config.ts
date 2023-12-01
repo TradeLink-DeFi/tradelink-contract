@@ -10,8 +10,10 @@ const config: HardhatUserConfig = {
       optimisticEthereum: "YOUR_OPTIMISTIC_ETHERSCAN_API_KEY",
       arbitrumOne: "YOUR_ARBISCAN_API_KEY",
       sepolia: process.env.APIKEY || "",
+      polygonMumbai: process.env.APIKEY_POLYGON || "",
     },
   },
+
   solidity: {
     compilers: [
       {
@@ -45,6 +47,10 @@ const config: HardhatUserConfig = {
     },
     sepolia: {
       url: "https://ethereum-sepolia.publicnode.com",
+      accounts: accountUtils.getAccounts(),
+    },
+    polygonMumbai: {
+      url: "https://polygon-mumbai-pokt.nodies.app",
       accounts: accountUtils.getAccounts(),
     },
     localhost: {
