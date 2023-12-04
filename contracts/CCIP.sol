@@ -15,20 +15,25 @@ import {IERC20} from "./interfaces/IERC20.sol";
 contract TradeLink is CCIPReceiver, OwnerIsCreator {
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees);
 
-    event SendMessage(uint256 destinationChainSelector, address receiver);
-    event CheckLink(uint256 userLink);
-    event CheckChainSelectore(uint256 selector);
+    event SendMessage(
+        uint256 destinationChainSelector,
+        address receiver,
+        uint256 id
+    );
 
     IRouterClient private s_router;
     LinkTokenInterface private s_linkToken;
 
     receive() external payable {}
 
+    uint256 public gasLimit;
+
     constructor(address _router, address _link) CCIPReceiver(_router) {
         s_router = IRouterClient(_router);
         s_linkToken = LinkTokenInterface(_link);
         runningOfferId = 0;
         runningFulfillId = 0;
+        gasLimit = 900_000;
     }
 
     struct Offer {
@@ -43,6 +48,7 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         address traderAddress;
         uint256 deadlineAt;
         bool isAvailable;
+        uint256 linkAmount;
     }
 
     struct FulfillOffer {
@@ -92,11 +98,12 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
                     fulfillInfo: dataStruct.fulfillInfo
                 })
             );
-
+            emit SendMessage(sourceSelector, sender, dataStruct.fulfillOfferId);
             sendMessage(sender, sourceSelector, _payload);
         }
 
         if (dataStruct.step == 2) {
+            emit SendMessage(sourceSelector, sender, dataStruct.fulfillOfferId);
             transferToken(dataStruct.fulfillOfferId, false);
         }
     }
@@ -129,6 +136,15 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         _offer.isAvailable = true;
 
         offerCollection[runningOfferId] = _offer;
+
+        if (_offer.linkAmount > s_linkToken.balanceOf(address(msg.sender))) {
+            revert NotEnoughBalance(
+                s_linkToken.balanceOf(address(this)),
+                _offer.linkAmount
+            );
+        }
+
+        s_linkToken.transferFrom(msg.sender, address(this), _offer.linkAmount);
 
         for (uint i = 0; i < _offer.tokenIn.length; i++) {
             IERC20(_offer.tokenIn[i]).transferFrom(
@@ -165,6 +181,8 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
 
         _fulfillInfo.destChainSelector = chainSelector;
 
+        fulfillCollection[runningFulfillId] = _fulfillInfo;
+
         bytes memory _payload = encodedMessagePayload(
             MessagePayload({
                 step: 1,
@@ -180,10 +198,9 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
             _payload
         );
 
-        if (fees > s_linkToken.balanceOf(msg.sender))
+        if (fees > s_linkToken.balanceOf(msg.sender)) {
             revert NotEnoughBalance(s_linkToken.balanceOf(msg.sender), fees);
-
-        emit CheckLink(s_linkToken.balanceOf(msg.sender));
+        }
 
         s_linkToken.transferFrom(msg.sender, address(this), fees);
 
@@ -221,7 +238,7 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
             data: _payload,
             tokenAmounts: new Client.EVMTokenAmount[](0),
             extraArgs: Client._argsToBytes(
-                Client.EVMExtraArgsV1({gasLimit: 900_000, strict: false})
+                Client.EVMExtraArgsV1({gasLimit: gasLimit, strict: false})
             ),
             feeToken: address(s_linkToken)
         });
@@ -244,7 +261,7 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
 
         s_linkToken.approve(address(s_router), fees);
 
-        // s_router.ccipSend(chainSelector, evm2AnyMessage);
+        s_router.ccipSend(chainSelector, evm2AnyMessage);
     }
 
     function getOfferId() public view returns (uint256[] memory) {
@@ -267,15 +284,10 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         uint64 chainSelector,
         bytes memory _payload
     ) public view returns (uint256) {
-        Client.EVM2AnyMessage memory evm2AnyMessage = Client.EVM2AnyMessage({
-            receiver: abi.encode(receiver),
-            data: _payload,
-            tokenAmounts: new Client.EVMTokenAmount[](0),
-            extraArgs: Client._argsToBytes(
-                Client.EVMExtraArgsV1({gasLimit: 900_000, strict: false})
-            ),
-            feeToken: address(s_linkToken)
-        });
+        Client.EVM2AnyMessage memory evm2AnyMessage = getMessage(
+            receiver,
+            _payload
+        );
 
         uint256 fees = s_router.getFee(chainSelector, evm2AnyMessage);
 
@@ -328,7 +340,8 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
 
         IERC20(_token).transfer(_beneficiary, amount);
     }
-}
 
-// sepolia 0x649dA825a2796D2ea258Df1d6B1A20D8dFAD0546
-// mumbai 0x241c7cDAf52A16C5F8FB0328c662461fd8D71672
+    function setGasLimit(uint256 _gasLimit) public {
+        gasLimit = _gasLimit;
+    }
+}
