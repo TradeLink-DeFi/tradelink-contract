@@ -11,6 +11,7 @@ const config: HardhatUserConfig = {
       arbitrumOne: "YOUR_ARBISCAN_API_KEY",
       sepolia: process.env.APIKEY || "",
       polygonMumbai: process.env.APIKEY_POLYGON || "",
+      bscTestnet: process.env.APIKEY_BSC || "",
     },
   },
 
