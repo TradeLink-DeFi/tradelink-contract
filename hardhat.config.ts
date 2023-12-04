@@ -49,13 +49,8 @@ const config: HardhatUserConfig = {
       url: "https://ethereum-sepolia.publicnode.com",
       accounts: accountUtils.getAccounts(),
     },
-<<<<<<< Updated upstream
-    polygonMumbai: {
-      url: "https://polygon-mumbai-pokt.nodies.app",
-=======
     mumbai: {
       url: "https://polygon-mumbai-bor.publicnode.com",
->>>>>>> Stashed changes
       accounts: accountUtils.getAccounts(),
     },
     localhost: {
