@@ -1,0 +1,11 @@
+{
+  "name": "Golden Bob",
+  "descrition": "Bob the golden bull",
+  "image": "https://tradelink-nfts.s3.ap-southeast-1.amazonaws.com/goldenbull/4.jpeg",
+  "attributes": [
+    {
+      "trait_type": "",
+      "value": ""
+    }
+  ]
+}
