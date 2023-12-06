@@ -10,6 +10,7 @@ const config: HardhatUserConfig = {
       polygonMumbai: process.env.APIKEY_POLYGON || "",
       bscTestnet: process.env.APIKEY_BSC || "",
       avalancheFujiTestnet: "snowtrace",
+      optimisticGoerli: process.env.APIKEY_OP || "",
     },
   },
 
@@ -54,6 +55,10 @@ const config: HardhatUserConfig = {
     },
     avalanceFuji: {
       url: "https://avalanche-fuji-c-chain.publicnode.com",
+      accounts: accountUtils.getAccounts(),
+    },
+    optimismGoerli: {
+      url: "https://optimism-goerli.publicnode.com",
       accounts: accountUtils.getAccounts(),
     },
 
