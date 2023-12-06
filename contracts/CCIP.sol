@@ -48,7 +48,7 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         address traderAddress;
         uint256 deadlineAt;
         bool isAvailable;
-        uint256 linkAmount;
+        uint256 feeNative;
     }
 
     struct FulfillOffer {
@@ -67,8 +67,6 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
 
     mapping(uint256 => Offer) public offerCollection;
     mapping(uint256 => FulfillOffer) public fulfillCollection;
-
-    mapping(address => uint256[]) public userOfferIds;
 
     struct MessagePayload {
         uint256 step;
@@ -90,12 +88,14 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         if (dataStruct.step == 1) {
             transferToken(dataStruct.offerId, true);
 
+            FulfillOffer memory fulfillInfo;
+
             bytes memory _payload = encodedMessagePayload(
                 MessagePayload({
                     step: 2,
                     offerId: dataStruct.offerId,
                     fulfillOfferId: dataStruct.fulfillOfferId,
-                    fulfillInfo: dataStruct.fulfillInfo
+                    fulfillInfo: fulfillInfo
                 })
             );
             emit SendMessage(sourceSelector, sender, dataStruct.fulfillOfferId);
@@ -128,7 +128,9 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         }
     }
 
-    function createOffer(bytes memory _createOffer) public returns (uint256) {
+    function createOfferPayNative(
+        bytes memory _createOffer
+    ) public returns (uint256) {
         runningOfferId += 1;
 
         Offer memory _offer = decodeCreateOffer(_createOffer);
@@ -137,14 +139,12 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
 
         offerCollection[runningOfferId] = _offer;
 
-        if (_offer.linkAmount > s_linkToken.balanceOf(address(msg.sender))) {
+        if (_offer.feeNative > address(this).balance) {
             revert NotEnoughBalance(
                 s_linkToken.balanceOf(address(this)),
-                _offer.linkAmount
+                _offer.feeNative
             );
         }
-
-        s_linkToken.transferFrom(msg.sender, address(this), _offer.linkAmount);
 
         for (uint i = 0; i < _offer.tokenIn.length; i++) {
             IERC20(_offer.tokenIn[i]).transferFrom(
@@ -162,8 +162,6 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
             );
         }
 
-        userOfferIds[msg.sender].push(runningOfferId);
-
         return (runningOfferId);
     }
 
@@ -175,28 +173,23 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         runningFulfillId += 1;
 
         FulfillOffer memory _fulfillInfo = decodeFulfillOffer(
-            _createFulfillOffer,
-            chainSelector
+            _createFulfillOffer
         );
 
         _fulfillInfo.destChainSelector = chainSelector;
 
         fulfillCollection[runningFulfillId] = _fulfillInfo;
 
-        bytes memory _payload = encodedMessagePayload(
-            MessagePayload({
-                step: 1,
-                offerId: _fulfillInfo.offerId,
-                fulfillOfferId: runningFulfillId,
-                fulfillInfo: _fulfillInfo
-            })
-        );
+        MessagePayload memory messagePaylaod = MessagePayload({
+            step: 1,
+            offerId: _fulfillInfo.offerId,
+            fulfillOfferId: runningFulfillId,
+            fulfillInfo: _fulfillInfo
+        });
 
-        uint256 fees = getFee(
-            _fulfillInfo.destChainAddress,
-            _fulfillInfo.destChainSelector,
-            _payload
-        );
+        bytes memory _payload = encodedMessagePayload(messagePaylaod);
+
+        uint256 fees = getFeeFulfillOffer(messagePaylaod);
 
         if (fees > s_linkToken.balanceOf(msg.sender)) {
             revert NotEnoughBalance(s_linkToken.balanceOf(msg.sender), fees);
@@ -230,42 +223,38 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
     }
 
     function getMessage(
-        address receiver,
+        address _receiver,
         bytes memory _payload
     ) internal view returns (Client.EVM2AnyMessage memory _evm2AnyMessage) {
         Client.EVM2AnyMessage memory evm2AnyMessage = Client.EVM2AnyMessage({
-            receiver: abi.encode(receiver),
+            receiver: abi.encode(_receiver),
             data: _payload,
             tokenAmounts: new Client.EVMTokenAmount[](0),
             extraArgs: Client._argsToBytes(
                 Client.EVMExtraArgsV1({gasLimit: gasLimit, strict: false})
             ),
-            feeToken: address(s_linkToken)
+            feeToken: address(0)
         });
         return (evm2AnyMessage);
     }
 
     function sendMessage(
-        address receiver,
-        uint64 chainSelector,
+        address _receiver,
+        uint64 _chainSelector,
         bytes memory _payload
     ) internal {
-        Client.EVM2AnyMessage memory evm2AnyMessage = getMessage(
-            receiver,
+        Client.EVM2AnyMessage memory _evm2AnyMessage = getMessage(
+            _receiver,
             _payload
         );
-        uint256 fees = s_router.getFee(chainSelector, evm2AnyMessage);
+        uint256 fees = s_router.getFee(_chainSelector, _evm2AnyMessage);
 
         if (fees > s_linkToken.balanceOf(address(this)))
             revert NotEnoughBalance(s_linkToken.balanceOf(address(this)), fees);
 
         s_linkToken.approve(address(s_router), fees);
 
-        s_router.ccipSend(chainSelector, evm2AnyMessage);
-    }
-
-    function getOfferId() public view returns (uint256[] memory) {
-        return userOfferIds[msg.sender];
+        s_router.ccipSend(_chainSelector, _evm2AnyMessage);
     }
 
     function offerProcess(uint256 id) internal {
@@ -279,17 +268,47 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
         }
     }
 
-    function getFee(
-        address receiver,
-        uint64 chainSelector,
-        bytes memory _payload
+    function getFeeCreateOffer(
+        uint256 _offerId,
+        uint256 _fulfillOfferId,
+        address _destChainAddress,
+        uint64 _destChainSelector
     ) public view returns (uint256) {
+        FulfillOffer memory fulfillInfo;
+        bytes memory _payload = encodedMessagePayload(
+            MessagePayload({
+                step: 2,
+                offerId: _offerId,
+                fulfillOfferId: _fulfillOfferId,
+                fulfillInfo: fulfillInfo
+            })
+        );
+
         Client.EVM2AnyMessage memory evm2AnyMessage = getMessage(
-            receiver,
+            _destChainAddress,
             _payload
         );
 
-        uint256 fees = s_router.getFee(chainSelector, evm2AnyMessage);
+        uint256 fees = s_router.getFee(_destChainSelector, evm2AnyMessage);
+
+        return (fees);
+    }
+
+    function getFeeFulfillOffer(
+        MessagePayload memory _messagePayload
+    ) public view returns (uint256) {
+        bytes memory _payload = encodedMessagePayload(_messagePayload);
+
+        FulfillOffer memory _fulfillOffer = _messagePayload.fulfillInfo;
+        Client.EVM2AnyMessage memory evm2AnyMessage = getMessage(
+            _fulfillOffer.destChainAddress,
+            _payload
+        );
+
+        uint256 fees = s_router.getFee(
+            _fulfillOffer.destChainSelector,
+            evm2AnyMessage
+        );
 
         return (fees);
     }
@@ -320,14 +339,13 @@ contract TradeLink is CCIPReceiver, OwnerIsCreator {
     }
 
     function decodeFulfillOffer(
-        bytes memory encodedData,
-        uint64 chainSelector
+        bytes memory encodedData
     ) public pure returns (FulfillOffer memory decoded) {
         FulfillOffer memory decodedFulfillOffer = abi.decode(
             encodedData,
             (FulfillOffer)
         );
-        decodedFulfillOffer.destChainSelector = chainSelector;
+
         return decodedFulfillOffer;
     }
 
