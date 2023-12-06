@@ -6,12 +6,10 @@ import * as dotenv from "dotenv";
 const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
-      mainnet: "YOUR_ETHERSCAN_API_KEY",
-      optimisticEthereum: "YOUR_OPTIMISTIC_ETHERSCAN_API_KEY",
-      arbitrumOne: "YOUR_ARBISCAN_API_KEY",
       sepolia: process.env.APIKEY || "",
       polygonMumbai: process.env.APIKEY_POLYGON || "",
       bscTestnet: process.env.APIKEY_BSC || "",
+      avalancheFujiTestnet: "snowtrace",
     },
   },
 
@@ -54,6 +52,11 @@ const config: HardhatUserConfig = {
       url: "https://polygon-mumbai-pokt.nodies.app",
       accounts: accountUtils.getAccounts(),
     },
+    avalanceFuji: {
+      url: "https://avalanche-fuji-c-chain.publicnode.com",
+      accounts: accountUtils.getAccounts(),
+    },
+
     localhost: {
       url: "http://127.0.0.1:8545/",
       accounts: accountUtils.getAccounts(),

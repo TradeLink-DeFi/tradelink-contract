@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { setAddress } from "../utils/addressUtils";
 
 async function main() {
-  const contractName = "GoldenBullNft";
+  const contractName = "Golem8bitNft";
   const owner = "0x443Fe6AF640C1e6DeC1eFc4468451E6765152E94";
   const nft = await ethers.deployContract(contractName, [owner]);
   const Nft = await nft.waitForDeployment();
