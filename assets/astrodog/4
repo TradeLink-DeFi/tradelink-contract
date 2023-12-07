@@ -1,0 +1,11 @@
+{
+  "name": "Lucky",
+  "descrition": "Lucky the astro dog",
+  "image": "https://tradelink-nfts.s3.ap-southeast-1.amazonaws.com/astrodog/4.jpeg",
+  "attributes": [
+    {
+      "trait_type": "",
+      "value": ""
+    }
+  ]
+}
