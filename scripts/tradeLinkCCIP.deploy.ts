@@ -27,18 +27,17 @@ const main = async () => {
     owner
   )) as TradeLinkCCIP__factory;
 
-  for (let i = 0; i < deployTradeLink.length; i++) {
-    const tk = await TradeLinkCCIP.deploy(
-      deployTradeLink[i].routerAddress,
-      deployTradeLink[i].selector
-    );
-    await tk.waitForDeployment();
-    const tkAddr = await tk.getAddress();
-    console.log(`Deployed ${deployTradeLink[i].chainName} at ${tkAddr}`);
-    await addresses.saveAddresses(hre.network.name, {
-      [deployTradeLink[i].chainName]: tkAddr,
-    });
-  }
+  const tk = await TradeLinkCCIP.deploy(
+    deployTradeLink[0].routerAddress,
+    deployTradeLink[0].selector
+  );
+
+  await tk.waitForDeployment();
+  const tkAddr = await tk.getAddress();
+  console.log(`Deployed ${deployTradeLink[0].chainName} at ${tkAddr}`);
+  await addresses.saveAddresses(hre.network.name, {
+    [deployTradeLink[0].chainName]: tkAddr,
+  });
 };
 
 main().catch((error) => {
