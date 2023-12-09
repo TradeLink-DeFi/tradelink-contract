@@ -1,5 +1,5 @@
 import hre, { ethers } from "hardhat";
-import { TradeLinkCCIP__factory } from "../typechain-types";
+import { TradeLinkCCIPV1__factory } from "../typechain-types";
 import addresses from "../utils/addressUtils";
 
 // npx hardhat run scripts/deploy.ts --network bkc_test
@@ -27,9 +27,9 @@ const main = async () => {
   ];
 
   const TradeLinkCCIP = (await ethers.getContractFactory(
-    "TradeLinkCCIP",
+    "TradeLinkCCIPV1",
     owner
-  )) as TradeLinkCCIP__factory;
+  )) as TradeLinkCCIPV1__factory;
 
   const tk = await TradeLinkCCIP.deploy(
     deployTradeLink[0].routerAddress,
