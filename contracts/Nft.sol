@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 
-contract AstroDogNft is ERC721, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable {
+contract Nft is ERC721, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable {
     constructor(address initialOwner)
-        ERC721("AstroDog", "ASD")
+        ERC721("NftToken", "NTT")
         Ownable(initialOwner)
     {}
 

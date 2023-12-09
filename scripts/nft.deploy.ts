@@ -1,9 +1,10 @@
 import { ethers } from "hardhat";
 import { setAddress } from "../utils/addressUtils";
+import nftlists from "../constants/nftlist";
 
 async function main() {
-  const contractName = "KoiCrapNft";
-  const owner = "0x443Fe6AF640C1e6DeC1eFc4468451E6765152E94";
+  const contractName = nftlists.AstroDogNft;
+  const owner = process.env.ADMIN_ADDRESS;
   const nft = await ethers.deployContract(contractName, [owner]);
   const Nft = await nft.waitForDeployment();
   setAddress(contractName, await Nft.getAddress());
