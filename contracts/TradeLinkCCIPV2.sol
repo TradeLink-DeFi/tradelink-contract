@@ -7,8 +7,6 @@ import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.s
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 
-import "hardhat/console.sol";
-
 import {IERC721} from "./interfaces/IERC721.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 
@@ -107,6 +105,7 @@ contract TradeLinkCCIPV2 is CCIPReceiver, OwnerIsCreator {
         ccipCollection["BnM"] = _bnm;
         ccipCollection["LnM"] = _lnm;
         linkToken = LinkTokenInterface(_linkToken);
+
     }
 
     function _ccipReceive(
