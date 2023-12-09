@@ -57,6 +57,7 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         address ownerFulfillAddress;
         address traderFulfillAddress;
         bool isBridge;
+        bool isSuccess;
     }
 
     uint256 runningOfferId;
@@ -137,6 +138,7 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
 
         if (dataStruct.step == 2) {
             transferTokenAndNFT(dataStruct.fulfillOfferId, false);
+            fulfillCollection[dataStruct.fulfillOfferId].isSuccess = true;
             emit Success(
                 dataStruct.offerId,
                 dataStruct.fulfillOfferId,
@@ -191,7 +193,7 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         fulfillCollection[runningFulfillId] = _fulfillInfo;
 
         // TODO: check fulfill destChainSelector = sourceChainSelector
-        if (_fulfillInfo.isBridge) {
+        if (!_fulfillInfo.isBridge) {
             address fulfillTrader = offerCollection[_fulfillInfo.offerId]
                 .traderOfferAddress;
             require(
