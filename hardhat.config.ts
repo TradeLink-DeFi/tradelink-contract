@@ -10,6 +10,7 @@ const config: HardhatUserConfig = {
       optimisticEthereum: "YOUR_OPTIMISTIC_ETHERSCAN_API_KEY",
       arbitrumOne: "YOUR_ARBISCAN_API_KEY",
       sepolia: process.env.APIKEY || "",
+      avalancheFujiTestnet: "snowtrace",
       polygonMumbai: process.env.APIKEY_POLYGON || "",
     },
   },

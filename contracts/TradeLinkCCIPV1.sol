@@ -27,6 +27,9 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         address userFulfill
     );
 
+    event CreateOffer(uint256 offerId, address ownerOffer);
+    event CreateFulfill(uint256 fulfillId, address ownerFulfill);
+
     struct Offer {
         address[] tokenIn;
         uint256[] tokenInAmount;
@@ -69,23 +72,26 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
     mapping(uint256 => FulfillOffer) public fulfillCollection;
 
     IRouterClient router;
+    LinkTokenInterface linkToken;
 
     struct MessagePayload {
         uint256 step;
         uint256 offerId;
         uint256 fulfillOfferId;
-        FulfillOffer fulfillInfo;
+        bytes fulfillInfo;
     }
 
     constructor(
         address _router,
-        uint256 _sourceSelector
+        uint256 _sourceSelector,
+        address _linkToken
     ) CCIPReceiver(_router) {
         router = IRouterClient(_router);
         sourceChainSelector = uint64(_sourceSelector);
         runningOfferId = 0;
         runningFulfillId = 0;
         feePlatform = 5;
+        linkToken = LinkTokenInterface(_linkToken);
     }
 
     function _ccipReceive(
@@ -98,6 +104,8 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
             any2EvmMessage.data
         );
 
+        FulfillOffer memory _fulfill = decodeFulfill(dataStruct.fulfillInfo);
+
         if (dataStruct.step == 1) {
             if (
                 !offerCollection[dataStruct.offerId].isSuccess &&
@@ -105,7 +113,7 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
                     block.timestamp) &&
                 validateOfferOutAndFulfillIn(
                     offerCollection[dataStruct.offerId],
-                    dataStruct.fulfillInfo
+                    _fulfill
                 )
             ) {
                 transferTokenAndNFT(dataStruct.offerId, true);
@@ -119,15 +127,16 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
                         step: 2,
                         offerId: dataStruct.offerId,
                         fulfillOfferId: dataStruct.fulfillOfferId,
-                        fulfillInfo: fulfillInfo
+                        fulfillInfo: encodedFulfill(fulfillInfo)
                     })
                 );
 
+                // TODO : bypass to use linkToken for fee
                 Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
                     sender,
                     _payload,
                     tokenAmounts,
-                    offerCollection[dataStruct.offerId].feeAddress
+                    address(linkToken)
                 );
 
                 offerCollection[dataStruct.offerId].isSuccess = true;
@@ -144,8 +153,9 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
                 dataStruct.fulfillOfferId,
                 sourceChainSelector,
                 sourceSelector,
-                dataStruct.fulfillInfo.traderFulfillAddress,
-                dataStruct.fulfillInfo.ownerFulfillAddress
+                fulfillCollection[dataStruct.fulfillOfferId]
+                    .traderFulfillAddress,
+                fulfillCollection[dataStruct.fulfillOfferId].ownerFulfillAddress
             );
         }
     }
@@ -159,19 +169,20 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         offerCollection[runningOfferId] = _offer;
 
         address _feeTokenAddress = _offer.feeAddress;
-
         uint256 fees = _offer.fee;
 
-        // TODO: Check token fee
+        // TODO : Check token fee
         checkFee(_feeTokenAddress, fees);
 
-        // TODO: transferFron token and nft
+        // TODO : transferFron token and nft
         transferFromToThis(
             _offer.tokenIn,
             _offer.tokenInAmount,
             _offer.nftIn,
             _offer.nftInId
         );
+
+        emit CreateOffer(runningOfferId, msg.sender);
 
         return (runningOfferId);
     }
@@ -188,11 +199,9 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         FulfillOffer memory _fulfillInfo = decodeFulfill(_createFulfillOffer);
         address _feeTokenAddress = _fulfillInfo.feeAddress;
 
-        bool isNative = address(_feeTokenAddress) == address(0);
-
         fulfillCollection[runningFulfillId] = _fulfillInfo;
 
-        // TODO: check fulfill destChainSelector = sourceChainSelector
+        // TODO : check fulfill destChainSelector = sourceChainSelector
         if (!_fulfillInfo.isBridge) {
             address fulfillTrader = offerCollection[_fulfillInfo.offerId]
                 .traderOfferAddress;
@@ -201,10 +210,10 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
                 "Trader address is incorrect!"
             );
 
-            // TODO: offer transfer to fulfill trader
+            // TODO : offer transfer to fulfill trader
             transferTokenAndNFT(_fulfillInfo.offerId, true);
 
-            // TODO: fulfill transfer to offer trader
+            // TODO : fulfill transfer to offer trader
             transferFromToTrader(
                 _fulfillInfo.tokenIn,
                 _fulfillInfo.tokenInAmount,
@@ -219,21 +228,22 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
                 step: 1,
                 offerId: _fulfillInfo.offerId,
                 fulfillOfferId: runningFulfillId,
-                fulfillInfo: _fulfillInfo
+                fulfillInfo: encodedFulfill(_fulfillInfo)
             });
 
             bytes memory _payload = encodedMessagePayload(messagePaylaod);
 
+            // TODO : bypass to use linkToken for fee
             Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
                 _fulfillInfo.destChainAddress,
                 _payload,
                 tokenAmounts,
-                _feeTokenAddress
+                address(linkToken)
             );
 
             uint256 fees = _getFeeFulfillOffer(messagePaylaod);
 
-            // TODO: Check token fee
+            // TODO : Check token fee
             checkFee(_feeTokenAddress, fees);
 
             transferFromToThis(
@@ -243,13 +253,13 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
                 _fulfillInfo.nftInId
             );
 
-            _messageId = sendCCIPMessage(
-                isNative,
+            _messageId = router.ccipSend(
                 _fulfillInfo.destChainSelector,
-                fees,
                 evm2AnyMessage
             );
         }
+
+        emit CreateFulfill(runningFulfillId, msg.sender);
 
         return (runningFulfillId, _messageId);
     }
@@ -378,21 +388,19 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
 
     function checkFee(address _feeTokenAddress, uint256 fees) internal {
         if (address(_feeTokenAddress) != address(0)) {
-            LinkTokenInterface s_linkToken = LinkTokenInterface(
-                _feeTokenAddress
-            );
-            if (fees > s_linkToken.balanceOf(msg.sender)) {
-                revert NotEnoughBalance(
-                    s_linkToken.balanceOf(msg.sender),
-                    fees
-                );
+            if (fees > linkToken.balanceOf(msg.sender)) {
+                revert NotEnoughBalance(linkToken.balanceOf(msg.sender), fees);
             } else {
-                s_linkToken.transferFrom(msg.sender, address(this), fees);
-                s_linkToken.approve(address(router), fees);
+                linkToken.transferFrom(msg.sender, address(this), fees);
+                linkToken.approve(address(router), fees);
             }
         } else {
-            if (fees > address(this).balance)
+            // TODO : bypass to use linkToken for fee
+            if (fees > linkToken.balanceOf(address(this))) {
                 revert NotEnoughBalance(address(this).balance, fees);
+            } else {
+                linkToken.approve(address(router), fees);
+            }
         }
     }
 
@@ -419,9 +427,7 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         uint256 _fulfillOfferId,
         uint64 _destChainSelector,
         address _destChainAddress,
-        address _feeTokenAddress,
-        address _ccipAddress,
-        uint256 _ccipAmount
+        address _feeTokenAddress
     ) external view returns (uint256) {
         FulfillOffer memory _fulfillOffer;
         bytes memory _payload = encodedMessagePayload(
@@ -429,19 +435,12 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
                 step: 2,
                 offerId: 0,
                 fulfillOfferId: _fulfillOfferId,
-                fulfillInfo: _fulfillOffer
+                fulfillInfo: encodedFulfill(_fulfillOffer)
             })
         );
 
         Client.EVMTokenAmount[]
             memory tokenAmounts = new Client.EVMTokenAmount[](0);
-
-        if (_ccipAddress != address(0) && _ccipAmount > uint256(0)) {
-            tokenAmounts[0] = Client.EVMTokenAmount({
-                token: _ccipAddress,
-                amount: _ccipAmount
-            });
-        }
 
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             _destChainAddress,
@@ -488,7 +487,9 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
     ) internal view returns (uint256) {
         bytes memory _payload = encodedMessagePayload(_messagePayload);
 
-        FulfillOffer memory _fulfillOffer = _messagePayload.fulfillInfo;
+        FulfillOffer memory _fulfillOffer = decodeFulfill(
+            _messagePayload.fulfillInfo
+        );
 
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             _fulfillOffer.destChainAddress,
@@ -570,6 +571,13 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
     ) public onlyOwner {
         // Retrieve the balance of this contract
         IERC721(_nft).transferFrom(address(0), _beneficiary, _id);
+    }
+
+    function encodedFulfill(
+        FulfillOffer memory _fulfillPayload
+    ) public pure returns (bytes memory) {
+        bytes memory encodedData = abi.encode(_fulfillPayload);
+        return encodedData;
     }
 
     function setFee(uint256 fee) public onlyOwner {
