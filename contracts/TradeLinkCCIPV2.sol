@@ -12,7 +12,7 @@ import "hardhat/console.sol";
 import {IERC721} from "./interfaces/IERC721.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 
-contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
+contract TradeLinkCCIPV2 is CCIPReceiver, OwnerIsCreator {
     // Custom errors to provide more descriptive revert messages.
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance to cover the fees.
     error NothingToWithdraw(); // Used when trying to withdraw Ether but there's nothing to withdraw.
