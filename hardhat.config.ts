@@ -53,6 +53,10 @@ const config: HardhatUserConfig = {
       url: "https://polygon-mumbai-bor.publicnode.com",
       accounts: accountUtils.getAccounts(),
     },
+    fuji: {
+      url: "https://avalanche-fuji-c-chain.publicnode.com",
+      accounts: accountUtils.getAccounts(),
+    },
     localhost: {
       url: "http://127.0.0.1:8545/",
       accounts: accountUtils.getAccounts(),

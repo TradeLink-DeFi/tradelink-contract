@@ -122,11 +122,11 @@ const fulfillOfferSepolia = {
   isBridge: true,
 };
 
-// const encodedOffer = encodeOffer(offerToEncode);
-// const encodedfulfill = encodeFulfillOffer(fulfillOffer);
+const encodedOffer = encodeOffer(offerToEncode);
+const encodedfulfill = encodeFulfillOffer(fulfillOffer);
 
-const encodedOffer = encodeOffer(offerToEncodeSepolia);
-const encodedfulfill = encodeFulfillOffer(fulfillOfferSepolia);
+// const encodedOffer = encodeOffer(offerToEncodeSepolia);
+// const encodedfulfill = encodeFulfillOffer(fulfillOfferSepolia);
 
 console.log(encodedOffer);
 console.log("------------------------");
