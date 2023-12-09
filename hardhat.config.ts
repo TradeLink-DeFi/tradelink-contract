@@ -10,7 +10,6 @@ const config: HardhatUserConfig = {
       avalancheFujiTestnet: "snowtrace",
       polygonMumbai: process.env.APIKEY_POLYGON || "",
       bscTestnet: process.env.APIKEY_BSC || "",
-      avalancheFujiTestnet: "snowtrace",
       optimisticGoerli: process.env.APIKEY_OP || "",
     },
   },
