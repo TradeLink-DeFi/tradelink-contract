@@ -6,12 +6,12 @@ import * as dotenv from "dotenv";
 const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
-      mainnet: "YOUR_ETHERSCAN_API_KEY",
-      optimisticEthereum: "YOUR_OPTIMISTIC_ETHERSCAN_API_KEY",
-      arbitrumOne: "YOUR_ARBISCAN_API_KEY",
       sepolia: process.env.APIKEY || "",
       avalancheFujiTestnet: "snowtrace",
       polygonMumbai: process.env.APIKEY_POLYGON || "",
+      bscTestnet: process.env.APIKEY_BSC || "",
+      avalancheFujiTestnet: "snowtrace",
+      optimisticGoerli: process.env.APIKEY_OP || "",
     },
   },
 
@@ -58,6 +58,15 @@ const config: HardhatUserConfig = {
       url: "https://avalanche-fuji-c-chain.publicnode.com",
       accounts: accountUtils.getAccounts(),
     },
+    avalanceFuji: {
+      url: "https://avalanche-fuji-c-chain.publicnode.com",
+      accounts: accountUtils.getAccounts(),
+    },
+    optimismGoerli: {
+      url: "https://optimism-goerli.publicnode.com",
+      accounts: accountUtils.getAccounts(),
+    },
+
     localhost: {
       url: "http://127.0.0.1:8545/",
       accounts: accountUtils.getAccounts(),

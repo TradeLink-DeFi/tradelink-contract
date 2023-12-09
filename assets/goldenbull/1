@@ -1,0 +1,11 @@
+{
+  "name": "Golden Angus",
+  "descrition": "Angus the golden bull",
+  "image": "https://tradelink-nfts.s3.ap-southeast-1.amazonaws.com/goldenbull/1.jpeg",
+  "attributes": [
+    {
+      "trait_type": "",
+      "value": ""
+    }
+  ]
+}
