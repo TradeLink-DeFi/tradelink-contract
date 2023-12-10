@@ -160,7 +160,7 @@ contract TradeLinkCCIPV2 is CCIPReceiver, OwnerIsCreator {
                         step: 2,
                         offerId: dataStruct.offerId,
                         fulfillOfferId: dataStruct.fulfillOfferId,
-                        fulfillInfo: encodedFulfill(_fulfill)
+                        fulfillInfo: encodedFulfill(fulfillInfo)
                     })
                 );
 
