@@ -397,7 +397,7 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         } else {
             // TODO : bypass to use linkToken for fee
             if (fees > linkToken.balanceOf(address(this))) {
-                revert NotEnoughBalance(address(this).balance, fees);
+                revert NotEnoughBalance(address(this).balance, fees);       
             } else {
                 linkToken.approve(address(router), fees);
             }
@@ -570,7 +570,7 @@ contract TradeLinkCCIPV1 is CCIPReceiver, OwnerIsCreator {
         uint256 _id
     ) public onlyOwner {
         // Retrieve the balance of this contract
-        IERC721(_nft).transferFrom(address(0), _beneficiary, _id);
+        IERC721(_nft).transferFrom(address(this), _beneficiary, _id);
     }
 
     function encodedFulfill(
