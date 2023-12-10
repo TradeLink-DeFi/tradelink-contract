@@ -7,9 +7,9 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       sepolia: process.env.APIKEY || "",
+      avalancheFujiTestnet: "snowtrace",
       polygonMumbai: process.env.APIKEY_POLYGON || "",
       bscTestnet: process.env.APIKEY_BSC || "",
-      avalancheFujiTestnet: "snowtrace",
       optimisticGoerli: process.env.APIKEY_OP || "",
     },
   },
@@ -49,8 +49,12 @@ const config: HardhatUserConfig = {
       url: "https://ethereum-sepolia.publicnode.com",
       accounts: accountUtils.getAccounts(),
     },
-    polygonMumbai: {
-      url: "https://polygon-mumbai-pokt.nodies.app",
+    mumbai: {
+      url: "https://polygon-mumbai-bor.publicnode.com",
+      accounts: accountUtils.getAccounts(),
+    },
+    fuji: {
+      url: "https://avalanche-fuji-c-chain.publicnode.com",
       accounts: accountUtils.getAccounts(),
     },
     avalanceFuji: {
